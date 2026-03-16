@@ -1,8 +1,9 @@
 import os
+from pathlib import Path
 from langchain_community.document_loaders import TextLoader, DirectoryLoader, WebBaseLoader
 from langchain_text_splitters import CharacterTextSplitter, RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 from bs4 import SoupStrainer
 from bs4 import BeautifulSoup
@@ -12,7 +13,12 @@ from langchain_core.documents import Document
 os.environ["USER_AGENT"] = "the-global-desk/1.0"
 load_dotenv()
 
-def load_urls(filepath="../data/urls.txt"):
+SCRIPT_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = SCRIPT_DIR.parent
+DATA_DIR = BACKEND_DIR / "data"
+CHROMA_DIR = BACKEND_DIR / "chroma_db"
+
+def load_urls(filepath=DATA_DIR / "urls.txt"):
     urls = []
     with open(filepath, "r") as f:
         for line in f:
@@ -83,7 +89,7 @@ def split_documents(documents, chunk_size=1000, chunk_overlap=200):
 
     return chunks
 
-def vectorize_db(chunks, persist_directory="../chroma_db"):
+def vectorize_db(chunks, persist_directory=CHROMA_DIR):
 
     print("Creating embeddings and storing in ChromaDB")
 
@@ -101,7 +107,7 @@ def vectorize_db(chunks, persist_directory="../chroma_db"):
     
     return vector_db
 
-def save_preview(documents, output_path="../data/preview.txt"):
+def save_preview(documents, output_path=DATA_DIR / "preview.txt"):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w") as f:
         for doc in documents:
