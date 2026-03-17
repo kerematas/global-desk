@@ -197,7 +197,7 @@ function buildPlaceholderReply(userMessage) {
     topic = "employment";
   }
 
-  return `You asked about topic. This is a placeholder response for the new frontend. `;
+  return `You asked about ${topic}. This is a placeholder response for the new frontend.`;
 }
 
 /*
