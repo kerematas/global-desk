@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Global Desk</title>
+    <meta
+      name="description"
+      content="Simple chat interface prototype for Global Desk."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <!--
+      The page is split into two simple areas:
+      1. A brand / context panel on the left
+      2. A single chat experience on the right
+
+      This keeps the first version easy to understand and easy to grow later.
+    -->
+    <div class="app-shell">
+      <aside class="brand-panel">
+        <!-- Use the actual Davidson mark instead of the temporary GD badge -->
+        <div class="brand-mark">
+          <img
+            class="brand-logo"
+            src="./DC.svg"
+            alt="Davidson College logo"
+          />
+        </div>
+
+        <p class="eyebrow">Davidson College • International Student Support</p>
+        <h1 class="brand-title">Global Desk</h1>
+        <p class="brand-copy">
+          Simple AI chat for international students asking about
+          visas, work authorization, travel, taxes, and campus policy.
+        </p>
+
+        <!-- Quick prompts make the UI feel alive without adding complexity -->
+        <section class="prompt-section">
+          <p class="info-label">Starter Questions</p>
+          <div class="prompt-list">
+            <button
+              class="prompt-chip"
+              type="button"
+              data-prompt="How does CPT work for Davidson students?"
+            >
+              How does CPT work?
+            </button>
+            <button
+              class="prompt-chip"
+              type="button"
+              data-prompt="What do I need to travel outside the U.S. and return?"
+            >
+              What do I need for travel?
+            </button>
+            <button
+              class="prompt-chip"
+              type="button"
+              data-prompt="Do international students have to file taxes?"
+            >
+              Do I need to file taxes?
+            </button>
+            <button
+              class="prompt-chip"
+              type="button"
+              data-prompt="What counts as maintaining F-1 status?"
+            >
+              What is maintaining F-1 status?
+            </button>
+          </div>
+        </section>
+      </aside>
+
+      <main class="chat-panel">
+        <!--
+          The header is intentionally small.
+          Later you can add models, settings, saved chats, or citations here.
+        -->
+        <header class="chat-header">
+          <div>
+            <p class="chat-kicker">Single Chat</p>
+            <h2 class="chat-title">Ask Global Desk</h2>
+          </div>
+
+          <button id="clearChatButton" class="ghost-button" type="button">
+            Clear Chat
+          </button>
+        </header>
+
+        <!--
+          Messages are rendered into this section by app.js.
+          We leave one starter assistant message in the HTML so the page has
+          useful content even before JavaScript runs.
+        -->
+        <section
+          id="chatMessages"
+          class="chat-messages"
+          aria-live="polite"
+          aria-label="Conversation"
+        >
+          <article class="message-row assistant">
+            <div class="message-avatar" aria-hidden="true">GD</div>
+            <div class="message-bubble">
+              <p class="message-role">Global Desk</p>
+              <p>
+                Hi! Ask a question about international student life, work
+                authorization, travel, taxes, or policy. This first frontend is
+                focused on a clean chat experience and leaves room for the real
+                backend hookup next.
+              </p>
+            </div>
+          </article>
+        </section>
+
+        <!--
+          The composer stays simple:
+          - one textarea
+          - one send button
+          - one small note
+        -->
+        <form id="chatForm" class="chat-composer">
+          <label class="composer-label" for="messageInput">
+            Ask a question
+          </label>
+
+          <div class="composer-row">
+            <textarea
+              id="messageInput"
+              name="message"
+              rows="1"
+              maxlength="1200"
+              placeholder="Ask about CPT, OPT, travel, taxes, or maintaining status..."
+            ></textarea>
+
+            <button id="sendButton" class="send-button" type="submit">
+              Send
+            </button>
+          </div>
+
+          <p class="composer-note">
+            This frontend is intentionally simple and built for one conversation at a time.
+          </p>
+        </form>
+      </main>
+    </div>
+  </body>
+</html>

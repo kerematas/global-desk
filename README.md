@@ -1,4 +1,4 @@
-# The Global Desk
+# Global Desk
 
 RAG-based assistant helping F-1 international university communities with visa, immigration, tax, and policy questions.
 
@@ -15,7 +15,7 @@ Davidson Indoors
 
 ## About
 
-The Global Desk is an AI-powered Q&A tool built for international students offices. It uses Retrieval-Augmented Generation (RAG) to answer questions based on official documents — covering topics like visa status, employment authorization, tax obligations, and institutional policies.
+Global Desk is an AI-powered Q&A tool built for international students offices. It uses Retrieval-Augmented Generation (RAG) to answer questions based on official documents — covering topics like visa status, employment authorization, tax obligations, and institutional policies.
 
 Built as a project for CSC 312: Software Design at Davidson College.
 

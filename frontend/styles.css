@@ -1,0 +1,474 @@
+/*
+  Google Fonts are used here to make the interface feel more intentional.
+  Instrument Serif gives the product a more editorial / academic personality,
+  while Manrope keeps the UI clean and readable.
+*/
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+/*
+  Brand variables are grouped at the top so future iterations can adjust the
+  color system in one place.
+
+  Based on the Davidosn Branding Colors: 
+  https://marketing-toolbox.dcreate.domains/branding-assets/color/
+*/
+:root {
+  --davidson-red: #d42121;
+  --ink: #0f1012;
+  --paper: #ffffff;
+  --sandstone: #e9ded3;
+  --deep-taupe: #9f8b76;
+  --lake-blue: #294878;
+  --cool-gray-1: #f9f5f2;
+  --cool-gray-3: #d4cfce;
+  --cool-gray-6: #b0abab;
+  --cool-gray-10: #6a6869;
+  --shadow-strong: 0 24px 60px rgba(15, 16, 18, 0.12);
+  --shadow-soft: 0 18px 40px rgba(15, 16, 18, 0.08);
+  --radius-xl: 28px;
+  --radius-lg: 20px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+}
+
+/*
+  A small reset keeps layout behavior predictable across browsers.
+*/
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Manrope", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(212, 33, 33, 0.12), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(41, 72, 120, 0.12), transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, var(--cool-gray-1) 100%);
+}
+
+/*
+  The outer shell creates the desktop two-column layout.
+  On smaller screens this collapses into one column.
+*/
+.app-shell {
+  width: min(1400px, calc(100% - 32px));
+  min-height: calc(100vh - 32px);
+  margin: 16px auto;
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 20px;
+}
+
+/*
+  The left panel carries the visual personality.
+  It uses the brand black as the anchor and red as the accent.
+*/
+.brand-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 28px;
+  border-radius: var(--radius-xl);
+  color: var(--paper);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+    linear-gradient(145deg, var(--ink), #181b1f);
+  box-shadow: var(--shadow-strong);
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-mark {
+  width: min(50px, 100%);
+  display: block;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.eyebrow,
+.chat-kicker,
+.info-label,
+.message-role,
+.composer-label,
+.composer-note {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.eyebrow,
+.chat-kicker,
+.info-label {
+  margin: 0;
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+
+.eyebrow {
+  color: var(--cool-gray-3);
+}
+
+.brand-title {
+  margin: -6px 0 0;
+  font-family: "Instrument Serif", serif;
+  font-size: clamp(3rem, 5vw, 4.4rem);
+  font-weight: 400;
+  line-height: 0.92;
+}
+
+.brand-copy,
+.info-copy {
+  margin: 0;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.info-card {
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.prompt-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.prompt-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/*
+  Prompt chips borrow from the supporting color palette instead of using only red.
+  That keeps the page feeling a little more nuanced.
+*/
+.prompt-chip {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(233, 222, 211, 0.12);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.prompt-chip:hover,
+.prompt-chip:focus-visible {
+  transform: translateY(-1px);
+  background: rgba(41, 72, 120, 0.24);
+  border-color: rgba(255, 255, 255, 0.28);
+  outline: none;
+}
+
+/*
+  The chat panel stays light and open so the conversation is easy to read.
+*/
+.chat-panel {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 0;
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(15, 16, 18, 0.08);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid rgba(15, 16, 18, 0.08);
+}
+
+.chat-kicker {
+  color: var(--davidson-red);
+}
+
+.chat-title {
+  margin: 6px 0 0;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  line-height: 1.1;
+}
+
+.ghost-button {
+  padding: 11px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 16, 18, 0.12);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease, background-color 160ms ease;
+}
+
+.ghost-button:hover,
+.ghost-button:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(212, 33, 33, 0.4);
+  background: var(--cool-gray-1);
+  outline: none;
+}
+
+/*
+  This is the scrolling message region.
+*/
+.chat-messages {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.message-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.message-row.user {
+  justify-content: flex-end;
+}
+
+.message-avatar {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.message-row.user .message-avatar {
+  order: 2;
+  background: var(--davidson-red);
+}
+
+.message-bubble {
+  max-width: min(780px, 100%);
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: var(--paper);
+  border: 1px solid rgba(15, 16, 18, 0.08);
+  box-shadow: 0 10px 24px rgba(15, 16, 18, 0.05);
+}
+
+.message-row.user .message-bubble {
+  background: var(--davidson-red);
+  border-color: transparent;
+  color: var(--paper);
+}
+
+.message-role {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--cool-gray-10);
+}
+
+.message-row.user .message-role {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.message-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+.message-bubble p {
+  margin: 0 0 10px;
+  line-height: 1.65;
+}
+
+/*
+  A very small typing state keeps the chat from feeling dead.
+*/
+.typing-bubble {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--deep-taupe);
+  animation: bounce 1s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+@keyframes bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+
+  40% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+/*
+  The composer stays pinned to the bottom of the panel,
+  which matches the common AI-chat layout the user asked for.
+*/
+.chat-composer {
+  padding: 20px 28px 28px;
+  border-top: 1px solid rgba(15, 16, 18, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.96));
+}
+
+.composer-label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--cool-gray-10);
+}
+
+.composer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+textarea {
+  width: 100%;
+  min-height: 58px;
+  max-height: 180px;
+  resize: none;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 16, 18, 0.12);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.5;
+  box-shadow: inset 0 1px 0 rgba(15, 16, 18, 0.04);
+}
+
+textarea:focus-visible {
+  outline: 2px solid rgba(212, 33, 33, 0.16);
+  border-color: rgba(212, 33, 33, 0.42);
+}
+
+.send-button {
+  min-width: 108px;
+  min-height: 58px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--davidson-red), #b31818);
+  color: var(--paper);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 14px 24px rgba(212, 33, 33, 0.22);
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.send-button:hover,
+.send-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 28px rgba(212, 33, 33, 0.26);
+  outline: none;
+}
+
+.send-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+  box-shadow: 0 8px 16px rgba(212, 33, 33, 0.14);
+}
+
+.composer-note {
+  margin: 15px 2px 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--cool-gray-10);
+}
+
+/*
+  Mobile adjustments keep the design usable without rewriting the structure.
+*/
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-panel {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    width: min(100%, calc(100% - 20px));
+    margin: 10px auto;
+    min-height: calc(100vh - 20px);
+  }
+
+  .brand-panel,
+  .chat-panel {
+    border-radius: 22px;
+  }
+
+  .brand-panel,
+  .chat-header,
+  .chat-messages,
+  .chat-composer {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .chat-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .composer-row {
+    grid-template-columns: 1fr;
+  }
+
+  .send-button {
+    width: 100%;
+  }
+}
