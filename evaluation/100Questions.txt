@@ -1,5 +1,6 @@
 # Easy
 # These questions are more direct and simple to answer
+# Rubric (Wrong answer: 0, Refuse to answer: 0.25, Half answer: 0.50, Correct answer: 1.00)
 
 1. Do I need a health insurance?
 2. What vaccinations should I have prior to attending Davidson?
@@ -34,8 +35,10 @@
 
 
 
-# Medium
+1
 # These questions require more reasoning to answer, and an answer can't be entirely pulled out at most times.
+# Rubric (Wrong answer: 0, Refuse to answer: 0.25, Half answer: 0.50, Correct answer: 1.00)
+
 31. Can I apply for REUs?
 32. Can I use my Belgium-issued Driving License in NC?
 33. What do I need to extend school for a semester?
@@ -68,6 +71,8 @@
 
 # Hard
 # These questions are more niche scenarios, and require a deeper knowledge of Davidson and general regulations.
+# Rubric (Wrong answer: 0, Refuse to answer: 0.25, Half answer: 0.50, Correct answer: 1.00)
+
 61. What hospitals can I go to with my Davidson-issued health insurance?
 62. Can I use 3 months off my OPT for a summer internship as a sophomore?
 63. Does HurtHub advisor work count as on-campus employment?
@@ -81,6 +86,8 @@
 
 # Ambigious
 # These questions are not clear enough and do not have certain answers. The machine should either answer based on multiple possible scenarios, or ask for clarity.
+# Rubric (Wrong answer: 0, Ambigious answer: 0.25, Refuse to Answer: 0.75, Multiple Scenario answer: 1.00)
+
 71. Can I travel this semester?
 72. Do I need to report my files to someone?
 73. Can I work while studying here?
@@ -94,6 +101,8 @@
 
 # Incorrect Assumption
 # User makes an incorrect assumption, and asks a question on top of that. The machine should be able to state that the initial assumption is wrong.
+# Rubric (Wrong answer: 0, Refuse to answer: 0.50, Call out incorrect assumption: 1.00)
+
 81. As I can use my CPT for a sociology internship as a computer science student, can I do that research abroad?
 82. As I don't have to file taxes, will I not get a tax return.
 83. Considering that I can stay in the USA however long I want after graduation, can I use this opportunity to do another Bachelor's.
@@ -107,6 +116,7 @@
 
 # Irrelevant
 # User asks an irrelevant question. The machine should not answer, and state that the question is irrelevant.
+# Rubric (Any answer: 0, Refuse to Answer: 1)
 91. Is Joel Embiid playing tonight?
 92. Where to sell second hand jeans?
 93. Can you write an email for the club activity I am hosting?
