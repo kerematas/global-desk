@@ -306,6 +306,85 @@ body {
   line-height: 1.65;
 }
 
+.message-text {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-text p,
+.message-text ul,
+.message-text ol {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.message-text p {
+  white-space: pre-wrap;
+}
+
+.message-list {
+  padding-left: 1.35rem;
+}
+
+.message-list li + li {
+  margin-top: 8px;
+}
+
+.message-section-title {
+  margin: 2px 0 -2px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cool-gray-10);
+}
+
+.message-row.user .message-section-title {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.message-sources {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(15, 16, 18, 0.08);
+}
+
+.message-row.user .message-sources {
+  border-top-color: rgba(255, 255, 255, 0.24);
+}
+
+.message-sources-label {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cool-gray-10);
+}
+
+.message-row.user .message-sources-label {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.message-sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.message-source-link {
+  color: var(--lake-blue);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.message-source-link:hover,
+.message-source-link:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
 /*
   A very small typing state keeps the chat from feeling dead.
 */

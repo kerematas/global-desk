@@ -4,7 +4,7 @@
   and easy to connect to a real backend later.
 */
 
-const STORAGE_KEY = "global-desk-single-chat";
+const STORAGE_KEY = "global-desk-single-chat-v2";
 
 /*
   This starter message is shown on first load and after a reset.
@@ -14,8 +14,9 @@ const STARTER_MESSAGES = [
   {
     role: "assistant",
     author: "Global Desk",
+    skipForApi: true,
     text:
-      "Hi! Ask a question about CPT, OPT, travel, taxes, work authorization, or maintaining status. This is a placeholder!"
+      "Hi! Ask a question about CPT, OPT, travel, taxes, work authorization, or maintaining status. I’ll answer using the existing Global Desk knowledge base."
   }
 ];
 
@@ -63,6 +64,21 @@ function saveMessages() {
 }
 
 /*
+  Convert our UI message objects into the simpler API history shape.
+  The current user message is sent separately, so we only pass prior turns here.
+*/
+function buildApiHistory() {
+  return messages
+    .slice(0, -1)
+    .filter((message) => !message.skipForApi)
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .map((message) => ({
+      role: message.role,
+      content: message.text
+    }));
+}
+
+/*
   Render the full message list from scratch.
   This is simple and perfectly fine for a small single-chat prototype.
 */
@@ -96,12 +112,125 @@ function createMessageElement(message) {
   role.className = "message-role";
   role.textContent = message.author;
 
-  const body = document.createElement("p");
-  body.textContent = message.text;
+  const body = document.createElement("div");
+  body.className = "message-text";
+
+  appendFormattedMessage(body, message.text);
 
   bubble.append(role, body);
+
+  if (message.role === "assistant" && Array.isArray(message.sources) && message.sources.length > 0) {
+    bubble.appendChild(createSourcesElement(message.sources));
+  }
+
   row.append(avatar, bubble);
   return row;
+}
+
+/*
+  Render a simple formatted message body.
+  We support the most useful structures for this project:
+  short paragraphs, section labels, bullet lists, and numbered lists.
+*/
+function appendFormattedMessage(container, text) {
+  const blocks = String(text)
+    .trim()
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  if (blocks.length === 0) {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = "";
+    container.appendChild(paragraph);
+    return;
+  }
+
+  blocks.forEach((block) => {
+    const lines = block
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (lines.length === 0) {
+      return;
+    }
+
+    const normalizedTitle = lines[0]
+      .replace(/^[-*]\s+/, "")
+      .replace(/^\d+\.\s+/, "");
+
+    const hasSectionTitle = normalizedTitle.endsWith(":") && lines.length > 1;
+    const contentLines = hasSectionTitle ? lines.slice(1) : lines;
+
+    if (hasSectionTitle) {
+      const title = document.createElement("p");
+      title.className = "message-section-title";
+      title.textContent = normalizedTitle;
+      container.appendChild(title);
+    }
+
+    if (contentLines.every((line) => /^[-*]\s+/.test(line))) {
+      const list = document.createElement("ul");
+      list.className = "message-list";
+
+      contentLines.forEach((line) => {
+        const item = document.createElement("li");
+        item.textContent = line.replace(/^[-*]\s+/, "");
+        list.appendChild(item);
+      });
+
+      container.appendChild(list);
+      return;
+    }
+
+    if (contentLines.every((line) => /^\d+\.\s+/.test(line))) {
+      const list = document.createElement("ol");
+      list.className = "message-list";
+
+      contentLines.forEach((line) => {
+        const item = document.createElement("li");
+        item.textContent = line.replace(/^\d+\.\s+/, "");
+        list.appendChild(item);
+      });
+
+      container.appendChild(list);
+      return;
+    }
+
+    const paragraph = document.createElement("p");
+    paragraph.textContent = contentLines.join("\n");
+    container.appendChild(paragraph);
+  });
+}
+
+/*
+  Show source URLs in a lightweight footer under assistant messages.
+*/
+function createSourcesElement(sources) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "message-sources";
+
+  const label = document.createElement("p");
+  label.className = "message-sources-label";
+  label.textContent = "Sources";
+  wrapper.appendChild(label);
+
+  const list = document.createElement("div");
+  list.className = "message-sources-list";
+
+  sources.forEach((sourceItem) => {
+    const link = document.createElement("a");
+    link.className = "message-source-link";
+    link.href = sourceItem.source;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = sourceItem.source;
+    list.appendChild(link);
+  });
+
+  wrapper.appendChild(list);
+  return wrapper;
 }
 
 /*
@@ -166,47 +295,29 @@ function autoResizeInput() {
 }
 
 /*
-  For now this returns a placeholder.
-  Later, replace the inside of this function with a real fetch() call to your
-  backend endpoint and keep the rest of the frontend exactly the same.
+  Send the latest message plus prior chat turns to the backend API.
+  The backend stays stateless, so the browser sends the current single-chat
+  history with each request.
 */
 async function getAssistantReply(userMessage) {
-  await delay(700);
-  return buildPlaceholderReply(userMessage);
-}
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message: userMessage,
+      history: buildApiHistory()
+    })
+  });
 
-/*
-  This placeholder text keeps the demo honest.
-  It looks like a working chat, but it clearly says where the real answer will go.
-*/
-function buildPlaceholderReply(userMessage) {
-  const loweredMessage = userMessage.toLowerCase();
-  let topic = "your question";
+  const data = await response.json();
 
-  if (loweredMessage.includes("cpt")) {
-    topic = "CPT";
-  } else if (loweredMessage.includes("opt")) {
-    topic = "OPT";
-  } else if (loweredMessage.includes("tax")) {
-    topic = "tax filing";
-  } else if (loweredMessage.includes("travel")) {
-    topic = "travel";
-  } else if (loweredMessage.includes("status") || loweredMessage.includes("f-1")) {
-    topic = "maintaining F-1 status";
-  } else if (loweredMessage.includes("work") || loweredMessage.includes("job")) {
-    topic = "employment";
+  if (!response.ok) {
+    throw new Error(data.error || "Something went wrong while contacting the server.");
   }
 
-  return `You asked about ${topic}. This is a placeholder response for the new frontend.`;
-}
-
-/*
-  Lightweight delay helper used by the placeholder reply.
-*/
-function delay(milliseconds) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, milliseconds);
-  });
+  return data;
 }
 
 /*
@@ -238,14 +349,15 @@ async function handleSubmit(event) {
   showTypingIndicator();
 
   try {
-    const reply = await getAssistantReply(text);
+    const result = await getAssistantReply(text);
 
     hideTypingIndicator();
 
     messages.push({
       role: "assistant",
       author: "Global Desk",
-      text: reply
+      text: result.answer,
+      sources: result.sources || []
     });
 
     saveMessages();
@@ -257,8 +369,7 @@ async function handleSubmit(event) {
     messages.push({
       role: "assistant",
       author: "Global Desk",
-      text:
-        "Something went wrong while generating the placeholder reply. Check the console and try again."
+      text: error.message || "Something went wrong while contacting the server."
     });
 
     saveMessages();

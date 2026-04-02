@@ -11,7 +11,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
 persistent_directory = BACKEND_DIR / "chroma_db"
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-db = Chroma(persist_directory=persistent_directory, embedding_function=embeddings)
+db = Chroma(persist_directory=str(persistent_directory), embedding_function=embeddings)
 
 # Set up AI model
 model = ChatOpenAI(model="gpt-4o")
@@ -49,10 +49,11 @@ def ask_question(user_question):
         print(f"  Doc {i}: {preview}...")
     
     # Step 3: Create final prompt
+    document_context = "\n".join([f"- {doc.page_content}" for doc in docs])
     combined_input = f"""Based on the following documents, please answer this question: {user_question}
 
     Documents:
-    {"\n".join([f"- {doc.page_content}" for doc in docs])}
+    {document_context}
 
     Please provide a clear, helpful answer using only the information from these documents. If you can't find the answer in the documents, say "I don't have enough information to answer that question based on the provided documents."
     """
