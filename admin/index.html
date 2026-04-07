@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Global Desk Admin</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 60px auto; }
+    h1 { font-size: 1.5rem; }
+    input[type="file"] { margin: 16px 0; display: block; }
+    button { padding: 10px 20px; background: #2563eb; color: white; border: none;
+             border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    #status { margin-top: 16px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Global Desk — Admin Upload</h1>
+  <p>Upload a PDF or DOCX to add it to the knowledge base.</p>
+  <input type="file" id="fileInput" accept=".pdf,.docx" />
+  <button onclick="upload()">Upload & Ingest</button>
+  <div id="status"></div>
+
+  <script>
+    async function upload() {
+      const file = document.getElementById("fileInput").files[0];
+      const status = document.getElementById("status");
+      if (!file) { status.textContent = "Please select a file."; return; }
+
+      status.textContent = "Uploading and ingesting... this may take a moment.";
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          status.textContent = `✅ Success! Saved as ${data.saved_as} and knowledge base updated.`;
+        } else {
+          status.textContent = `❌ Error: ${data.detail}`;
+        }
+      } catch (e) {
+        status.textContent = "❌ Upload failed. Check the server.";
+      }
+    }
+  </script>
+</body>
+</html>
