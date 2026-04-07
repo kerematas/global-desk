@@ -28,6 +28,19 @@ def load_urls(filepath=DATA_DIR / "urls.txt"):
     print(f"Loaded {len(urls)} URLs from {filepath}")
     return urls
 
+def load_text_files(data_dir=DATA_DIR):
+    """Load any .txt files saved in the data folder (uploaded documents)."""
+    documents = []
+    for txt_file in data_dir.glob("*.txt"):
+        if txt_file.name == "preview.txt":
+            continue  # skip the preview
+        with open(txt_file, "r") as f:
+            text = f.read()
+        if text.strip():
+            documents.append(Document(page_content=text, metadata={"source": str(txt_file.name)}))
+            print(f"  Loaded text file: {txt_file.name}")
+    return documents
+
 def fetch_clean_text(url):
     response = requests.get(url, headers={"User-Agent": "the-global-desk/1.0"}, timeout=30)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -125,7 +138,9 @@ def main():
     urls = load_urls()
 
     # 1. Loading the files
-    documents = load_documents(urls)
+    url_documents = load_documents(urls)
+    text_documents = load_text_files()
+    documents = url_documents + text_documents
     save_preview(documents)
     
     # 2. Chunking the files
