@@ -119,3 +119,4 @@ zstandard==0.25.0
 pdfplumber
 python-docx
 python-dotenv
+langchain_community
