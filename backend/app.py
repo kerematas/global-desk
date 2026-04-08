@@ -13,6 +13,8 @@ import shutil
 from pathlib import Path
 from typing import Literal
 
+from dotenv import load_dotenv
+
 import pdfplumber
 from docx import Document as DocxDocument
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
@@ -23,6 +25,8 @@ from pydantic import BaseModel, Field
 
 from backend.rag_service import CHROMA_SQLITE_FILE, ENV_PATH, RAGService, RAGServiceError
 
+load_dotenv()
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 INDEX_FILE = FRONTEND_DIR / "index.html"
@@ -30,7 +34,6 @@ INDEX_FILE = FRONTEND_DIR / "index.html"
 app = FastAPI(title="Global Desk")
 rag_service = RAGService()
 security = HTTPBasic()
-
 
 class ChatHistoryItem(BaseModel):
     """One prior chat turn sent from the browser."""
@@ -166,6 +169,7 @@ def chat(request: ChatRequest):
 @app.get("/", include_in_schema=False)
 def read_index() -> FileResponse:
     return FileResponse(INDEX_FILE)
+
 
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
