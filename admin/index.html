@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Global Desk Admin</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 60px auto; }
+    h1 { font-size: 1.5rem; }
+    input { display: block; margin: 8px 0 16px; padding: 8px; width: 100%;
+            border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+    button { padding: 10px 20px; background: #2563eb; color: white; border: none;
+             border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    #uploadSection { display: none; margin-top: 24px; }
+    #status { margin-top: 16px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Global Desk Admin</h1>
+
+  <!-- Login Form -->
+  <div id="loginSection">
+    <p>Enter your admin information to continue.</p>
+    <label>Username</label>
+    <input type="text" id="username" />
+    <label>Password</label>
+    <input type="password" id="password" />
+    <button onclick="login()">Login</button>
+    <div id="loginError" style="color:red; margin-top:10px;"></div>
+  </div>
+
+  <!-- Upload Form (hidden until logged in) -->
+  <div id="uploadSection">
+    <p>Upload a PDF or DOCX to add it to the knowledge base.</p>
+    <input type="file" id="fileInput" accept=".pdf,.docx" />
+    <button onclick="upload()">Upload & Ingest</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    let savedUsername = "";
+    let savedPassword = "";
+
+
+    async function login() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      const testRes = await fetch("/api/admin/verify", {
+        method: "GET",
+        headers: {
+          "Authorization": "Basic " + btoa(username + ":" + password)
+        }
+      });
+
+      if (testRes.ok) {
+        savedUsername = username;
+        savedPassword = password;
+        document.getElementById("loginSection").style.display = "none";
+        document.getElementById("uploadSection").style.display = "block";
+      } else {
+        document.getElementById("loginError").textContent = "Invalid password or username.";
+      }
+    }
+
+    async function upload() {
+      const file = document.getElementById("fileInput").files[0];
+      const status = document.getElementById("status");
+      if (!file) { status.textContent = "Please select a file."; return; }
+
+      status.textContent = "Uploading and ingesting... this may take a moment.";
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        headers: {
+          "Authorization": "Basic " + btoa(savedUsername + ":" + savedPassword)
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        status.textContent = `Success! Saved as ${data.saved_as} and knowledge base updated.`;
+      } else {
+        status.textContent = `Error: ${data.detail}`;
+      }
+    }
+  </script>
+</body>
+</html>
