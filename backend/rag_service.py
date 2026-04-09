@@ -92,9 +92,11 @@ class RAGService:
             model=model,
         )
 
+        sources = [] if self._is_refusal(answer) else self._build_source_list(docs)
+
         return {
             "answer": answer,
-            "sources": self._build_source_list(docs),
+            "sources": sources,
         }
 
     def _require_openai_api_key(self) -> None:
@@ -263,6 +265,26 @@ class RAGService:
                 sources.append({"source": source})
 
         return sources
+
+    def _is_refusal(self, answer: str) -> bool:
+        """Return True if the answer indicates the model couldn't find relevant info."""
+        lower = answer.lower()
+        refusal_phrases = [
+            "don't have enough information",
+            "do not have enough information",
+            "don't have information",
+            "no information",
+            "not enough information",
+            "documents do not contain",
+            "documents don't contain",
+            "cannot answer",
+            "can't answer",
+            "i'm unable to answer",
+            "i am unable to answer",
+            "not covered in",
+            "not mentioned in",
+        ]
+        return any(phrase in lower for phrase in refusal_phrases)
 
     def _clean_answer_text(self, text: str) -> str:
         """
