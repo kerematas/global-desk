@@ -9,6 +9,8 @@ from bs4 import SoupStrainer
 from bs4 import BeautifulSoup
 import requests
 from langchain_core.documents import Document
+from PyPDF2 import PdfReader
+
 
 os.environ["USER_AGENT"] = "the-global-desk/1.0"
 load_dotenv()
@@ -28,6 +30,7 @@ def load_urls(filepath=DATA_DIR / "urls.txt"):
     print(f"Loaded {len(urls)} URLs from {filepath}")
     return urls
 
+<<<<<<< HEAD
 def load_text_files(data_dir=DATA_DIR):
     """Load any .txt files saved in the data folder (uploaded documents)."""
     documents = []
@@ -39,6 +42,78 @@ def load_text_files(data_dir=DATA_DIR):
         if text.strip():
             documents.append(Document(page_content=text, metadata={"source": str(txt_file.name)}))
             print(f"  Loaded text file: {txt_file.name}")
+=======
+def load_web_documents(urls):
+    documents = []
+    for url in urls:
+        print(f"  [WEB] {url}")
+        text = fetch_clean_text(url)
+        if text:
+            documents.append(Document(
+                page_content=text,
+                metadata={"source": url, "type": "web"}
+            ))
+    return documents
+
+def load_pdf_documents(pdf_dir="../data/pdfs"):
+    documents = []
+    if not os.path.exists(pdf_dir):
+        return documents
+
+    for filename in os.listdir(pdf_dir):
+        if filename.endswith(".pdf"):
+            filepath = os.path.join(pdf_dir, filename)
+            print(f"  [PDF] {filename}")
+            reader = PdfReader(filepath)
+            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+            if text.strip():
+                documents.append(Document(
+                    page_content=text,
+                    metadata={"source": filename, "type": "pdf"}
+                ))
+    return documents
+
+def load_txt_documents(txt_dir="../data/txt"):
+    documents = []
+    if not os.path.exists(txt_dir):
+        return documents
+
+    for filename in os.listdir(txt_dir):
+        if filename.endswith(".txt"):
+            filepath = os.path.join(txt_dir, filename)
+            print(f"  [TXT] {filename}")
+            with open(filepath, "r") as f:
+                text = f.read()
+            if text.strip():
+                documents.append(Document(
+                    page_content=text,
+                    metadata={"source": filename, "type": "txt"}
+                ))
+    return documents
+
+def load_all_documents():
+    print("Loading documents from all sources...\n")
+
+    urls = load_urls()
+    web_docs = load_web_documents(urls)
+    pdf_docs = load_pdf_documents()
+    txt_docs = load_txt_documents()
+
+    documents = web_docs + pdf_docs + txt_docs
+
+    if len(documents) == 0:
+        raise ValueError("No documents were loaded.")
+
+    print(f"\nTotal: {len(documents)} documents")
+    print(f"  Web: {len(web_docs)}")
+    print(f"  PDF: {len(pdf_docs)}")
+    print(f"  TXT: {len(txt_docs)}\n")
+
+    for doc in documents:
+        print(f"[{doc.metadata.get('type')}] {doc.metadata.get('source')}")
+        print(f"  Length: {len(doc.page_content)} chars\n")
+
+>>>>>>> 6d57b6a (Implemented more docs)
     return documents
 
 def fetch_clean_text(url):
@@ -138,9 +213,13 @@ def main():
     urls = load_urls()
 
     # 1. Loading the files
+<<<<<<< HEAD
     url_documents = load_documents(urls)
     text_documents = load_text_files()
     documents = url_documents + text_documents
+=======
+    documents = load_all_documents()
+>>>>>>> 6d57b6a (Implemented more docs)
     save_preview(documents)
     
     # 2. Chunking the files
@@ -149,5 +228,7 @@ def main():
     # 3. Embedding and storing in vector DB
     db = vectorize_db(chunks)
 
+    print("\nDone! Database is ready for retrieval.")
+    
 if __name__ == "__main__":
     main()
