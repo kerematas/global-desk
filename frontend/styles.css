@@ -120,18 +120,19 @@ body {
 
 .login-btn {
   position: absolute;
-  border: 1px solid rgba(255, 255, 255, 0.16);
   top: 28px;
   right: 28px;
   padding: 10px 16px;
-  border-radius: 999px;
-  background: #d82a25;
+  border: none;
+  border-radius: 10px;
+  background: var(--davidson-red);
   color: var(--paper);
   font: inherit;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   text-decoration: none;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 
 .login-btn:hover {
@@ -180,7 +181,7 @@ body {
 */
 .prompt-chip {
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
+  border-radius: 10px;
   padding: 10px 14px;
   background: rgba(233, 222, 211, 0.12);
   color: var(--paper);
@@ -234,7 +235,7 @@ body {
 
 .ghost-button {
   padding: 11px 16px;
-  border-radius: 999px;
+  border-radius: 10px;
   border: 1px solid rgba(15, 16, 18, 0.12);
   background: var(--paper);
   color: var(--ink);
@@ -280,7 +281,7 @@ body {
   height: 42px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--ink);
   color: var(--paper);
   font-size: 0.82rem;
@@ -496,12 +497,11 @@ textarea:focus-visible {
   padding: 0 20px;
   border: none;
   border-radius: 18px;
-  background: linear-gradient(135deg, var(--davidson-red), #b31818);
+  background: var(--davidson-red);
   color: var(--paper);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 14px 24px rgba(212, 33, 33, 0.22);
   transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
 
