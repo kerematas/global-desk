@@ -48,6 +48,8 @@ class ChatRequest(BaseModel):
 
 
 def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    # compare_digest does a constant-time comparison to prevent timing attacks
+    # that could otherwise reveal whether the username or password was correct.
     correct_username = secrets.compare_digest(
         credentials.username, os.getenv("ADMIN_USERNAME", "admin")
     )
@@ -120,6 +122,7 @@ async def upload_document(
     with open(txt_path, "w") as f:
         f.write(text)
 
+    # Deferred imports — these pull in heavy ML libs and we only need them during upload.
     from backend.scripts.ingestion_pipeline import split_documents
     from langchain_chroma import Chroma
     from langchain_core.documents import Document as LangchainDocument

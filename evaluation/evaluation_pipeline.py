@@ -1,3 +1,12 @@
+"""
+Batch evaluation runner that sends every question from 100Questions.txt through the
+retrieval pipeline and saves the answers to answers.txt.
+
+The script is resumable: it tracks the last question number written to answers.txt
+and skips everything up to that point, so you can safely interrupt and restart it
+without losing work or duplicating answers.
+"""
+
 import re
 import subprocess
 from pathlib import Path
@@ -17,6 +26,11 @@ def parse_questions(filepath: str):
 
 
 def get_last_completed(output_file: str) -> int:
+    """Return the highest question number already written to the output file.
+
+    Returns 0 if the file doesn't exist or has no numbered entries yet.
+    The main loop uses this to skip already-answered questions on resume.
+    """
     path = Path(output_file)
     if not path.exists():
         return 0
@@ -29,6 +43,13 @@ def get_last_completed(output_file: str) -> int:
 
 
 def run_target_script(question: str) -> str:
+    """
+    Drive retrieval_pipeline.py as a subprocess, feeding it one question via stdin.
+
+    We append "quit\n" after the question so the script's input() loop exits cleanly
+    instead of blocking forever waiting for more input. The full stdout is returned
+    as the answer string.
+    """
     result = subprocess.run(
         [PYTHON_EXE, TARGET_SCRIPT],
         input=question + "\nquit\n",

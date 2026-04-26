@@ -1,3 +1,15 @@
+"""
+Interactive terminal chat against the ChromaDB knowledge base.
+
+This script is a standalone CLI tool — run it directly to ask questions and get
+RAG-grounded answers in the terminal. It is also used by the evaluation pipeline,
+which drives it via subprocess stdin.
+
+Note: the embeddings, db, and model are all initialised at module import time.
+That means the OpenAI API key must already be in the environment when the script
+starts. There is no lazy initialisation here.
+"""
+
 from pathlib import Path
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
@@ -10,13 +22,14 @@ load_dotenv()
 SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
 persistent_directory = BACKEND_DIR / "chroma_db"
+
+# These are module-level singletons — one DB connection and one model per process.
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 db = Chroma(persist_directory=str(persistent_directory), embedding_function=embeddings)
-
-# Set up AI model
 model = ChatOpenAI(model="gpt-4o")
 
-# Store our conversation as messages
+# Grows with each turn so follow-up questions have context.
+# Since this is a plain CLI script (one process = one session), a global list is fine.
 chat_history = []
 
 def ask_question(user_question):
@@ -48,7 +61,9 @@ def ask_question(user_question):
         preview = '\n'.join(lines)
         print(f"  Doc {i}: {preview}...")
     
-    # Step 3: Create final prompt
+    # Step 3: Build the final prompt with retrieved context inline.
+    # The explicit "I don't have enough information" fallback keeps the model
+    # from hallucinating when the retrieval comes up empty.
     document_context = "\n".join([f"- {doc.page_content}" for doc in docs])
     combined_input = f"""Based on the following documents, please answer this question: {user_question}
 

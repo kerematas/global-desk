@@ -1,3 +1,14 @@
+"""
+One-shot script that builds (or rebuilds) the ChromaDB knowledge base from scratch.
+
+Run this when setting up the project for the first time, or whenever you want to
+reload all sources from scratch. For incremental additions after setup, use the
+admin upload endpoint instead (POST /api/admin/upload).
+
+Usage:
+    python3 backend/scripts/ingestion_pipeline.py
+"""
+
 import os
 from pathlib import Path
 from langchain_community.document_loaders import TextLoader, DirectoryLoader, WebBaseLoader
@@ -11,6 +22,7 @@ import requests
 from langchain_core.documents import Document
 from PyPDF2 import PdfReader
 
+# Some sites block requests without a recognizable User-Agent.
 os.environ["USER_AGENT"] = "the-global-desk/1.0"
 load_dotenv()
 
@@ -20,6 +32,7 @@ DATA_DIR = BACKEND_DIR / "data"
 CHROMA_DIR = BACKEND_DIR / "chroma_db"
 
 def load_urls(filepath=DATA_DIR / "urls.txt"):
+    """Read URLs from a plain text file, one per line. Lines starting with # are ignored."""
     urls = []
     with open(filepath, "r") as f:
         for line in f:
@@ -102,28 +115,39 @@ def load_all_documents():
     return documents
 
 def fetch_clean_text(url):
+    """
+    Fetch a page and extract its main readable text, stripping navigation/chrome.
+
+    We try a cascade of selectors so the function works across different CMS layouts:
+    1. .wysiwyg — Davidson's CMS wraps body copy in this class
+    2. <article> / <main> — semantic HTML fallbacks used by many modern sites
+    3. <body> — last resort so we always return something rather than nothing
+
+    The 1000-char threshold for the wysiwyg check filters out pages where that div
+    exists but contains only a short intro blurb rather than the full content.
+    """
     response = requests.get(url, headers={"User-Agent": "the-global-desk/1.0"}, timeout=30)
     soup = BeautifulSoup(response.text, "html.parser")
-    
+
+    # Strip boilerplate regions before extracting text.
     for tag in soup.find_all(["nav", "header", "footer", "script", "style", "aside"]):
         tag.decompose()
-    
-    # Try wysiwyg first
+
     content = soup.find("div", class_="wysiwyg")
-    
-    # If content is too short, try broader selectors
+
     if not content or len(content.get_text(strip=True)) < 1000:
         content = (
             soup.find("article") or
             soup.find("main") or
             soup.find("body")
         )
-    
+
     text = content.get_text(separator="\n", strip=True) if content else ""
     lines = [line for line in text.splitlines() if line.strip()]
     return "\n".join(lines)
 
 def load_documents(urls):
+    """Legacy URL-only loader kept for reference. Use load_all_documents() instead."""
     print("Loading documents from URLs...")
     documents = []
 
@@ -144,7 +168,14 @@ def load_documents(urls):
     return documents
 
 def split_documents(documents, chunk_size=1000, chunk_overlap=200):
+    """
+    Break documents into overlapping chunks for embedding.
 
+    chunk_size=1000 keeps each chunk under typical context-window limits while
+    still holding enough context for the LLM to answer from.
+    chunk_overlap=200 prevents a sentence from being cut off right at a boundary
+    and losing its meaning across two adjacent chunks.
+    """
     print("Splitting documents into chunks...")
 
     text_splitter = RecursiveCharacterTextSplitter(
@@ -168,12 +199,13 @@ def vectorize_db(chunks, persist_directory=CHROMA_DIR):
 
     embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
 
-    # Create chromadb vector db
+    # cosine distance works better than the default L2 for text embeddings
+    # because sentence-length differences don't inflate the distance unfairly.
     vector_db = Chroma.from_documents(
         documents=chunks,
         embedding=embedding_model,
         persist_directory=persist_directory,
-        collection_metadata={"hnsw:space":"cosine"}
+        collection_metadata={"hnsw:space": "cosine"}
     )
 
     print(f"Vector db created and saved to {persist_directory}")

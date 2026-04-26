@@ -44,6 +44,9 @@
   </div>
 
   <script>
+    // Credentials are held in JS variables for the lifetime of this page only.
+    // They are cleared on refresh — no localStorage, no cookies.
+    // The server validates them on every request via HTTP Basic Auth.
     let savedUsername = "";
     let savedPassword = "";
 
