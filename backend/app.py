@@ -177,3 +177,40 @@ def read_index() -> FileResponse:
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 app.mount("/admin", StaticFiles(directory=PROJECT_ROOT / "admin", html=True), name="admin")
+
+@app.get("/api/admin/files")
+def list_files(credentials: HTTPBasicCredentials = Depends(verify_admin)):
+    data_dir = PROJECT_ROOT / "backend" / "data"
+    files = [f.name for f in data_dir.glob("*.txt") if f.name != "preview.txt"]
+    return {"files": files}
+
+
+@app.delete("/api/admin/files/{filename}")
+def delete_file(filename: str, credentials: HTTPBasicCredentials = Depends(verify_admin)):
+    data_dir = PROJECT_ROOT / "backend" / "data"
+    file_path = data_dir / filename
+    if not file_path.resolve().is_relative_to(data_dir.resolve()):
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found.")
+    file_path.unlink()
+    return {"ok": True, "deleted": filename}
+
+
+@app.post("/api/admin/reindex")
+def reindex(credentials: HTTPBasicCredentials = Depends(verify_admin)):
+    import shutil
+    from backend.scripts.ingestion_pipeline import (
+        load_urls, load_documents, load_text_files,
+        split_documents, vectorize_db
+    )
+    chroma_dir = PROJECT_ROOT / "backend" / "chroma_db"
+    if chroma_dir.exists():
+        shutil.rmtree(chroma_dir)
+    urls = load_urls()
+    url_docs = load_documents(urls)
+    text_docs = load_text_files()
+    all_docs = url_docs + text_docs
+    chunks = split_documents(all_docs)
+    vectorize_db(chunks)
+    return {"ok": True, "message": "Knowledge base rebuilt successfully."}
