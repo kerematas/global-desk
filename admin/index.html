@@ -4,27 +4,38 @@
   <meta charset="UTF-8" />
   <title>Global Desk Admin</title>
   <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 60px auto; }
+    body { font-family: sans-serif; max-width: 560px; margin: 60px auto; }
     h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.1rem; margin-top: 32px; border-top: 1px solid #eee; padding-top: 20px; }
     input { display: block; margin: 8px 0 16px; padding: 8px; width: 100%;
-            border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+            border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
     button { padding: 10px 20px; background: #2563eb; color: white; border: none;
              border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
     #uploadSection { display: none; margin-top: 24px; }
     #status { margin-top: 16px; font-weight: bold; }
-  </style>
-  <a href="/" class="login-btn">Return</a>
-  <style>
-  .login-btn { position: absolute; top: 20px; 
-              left: 40px; padding: 10px 16px; border-radius: 10px; background: #d82a25; color: white; font: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; text-decoration: none;   transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease; }
-
-  .login-btn:hover { background: #921d19; transform: translateY(-1px); }
+    .file-list { list-style: none; padding: 0; margin: 12px 0; }
+    .file-list li {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 6px;
+    }
+    .file-name { font-size: 0.9rem; color: #111; }
+    .delete-btn {
+      padding: 4px 12px; background: #ef4444; font-size: 0.85rem;
+      border-radius: 4px; border: none; color: white; cursor: pointer;
+    }
+    .delete-btn:hover { background: #dc2626; }
+    .reindex-btn {
+      margin-top: 12px; background: #16a34a; width: 100%; padding: 12px;
+      font-size: 1rem; border-radius: 6px; border: none; color: white; cursor: pointer;
+    }
+    .reindex-btn:hover { background: #15803d; }
+    #reindexStatus { margin-top: 10px; font-weight: bold; }
+    .empty-note { color: #888; font-size: 0.9rem; }
   </style>
 </head>
 <body>
   <h1>Global Desk Admin</h1>
-
-  <!-- Login Form -->
   <div id="loginSection">
     <p>Enter your admin information to continue.</p>
     <label>Username</label>
@@ -34,66 +45,109 @@
     <button onclick="login()">Login</button>
     <div id="loginError" style="color:red; margin-top:10px;"></div>
   </div>
-
-  <!-- Upload Form (hidden until logged in) -->
   <div id="uploadSection">
+    <h2>Upload Document</h2>
     <p>Upload a PDF or DOCX to add it to the knowledge base.</p>
     <input type="file" id="fileInput" accept=".pdf,.docx" />
     <button onclick="upload()">Upload & Ingest</button>
     <div id="status"></div>
+    <h2>Knowledge Base Files</h2>
+    <p>These are the documents currently stored in <code>backend/data/</code>.</p>
+    <ul class="file-list" id="fileList">
+      <li class="empty-note">Loading...</li>
+    </ul>
+    <button class="reindex-btn" onclick="reindex()">🔄 Re-vectorize All Documents</button>
+    <div id="reindexStatus"></div>
   </div>
-
   <script>
-    // Credentials are held in JS variables for the lifetime of this page only.
-    // They are cleared on refresh — no localStorage, no cookies.
-    // The server validates them on every request via HTTP Basic Auth.
     let savedUsername = "";
     let savedPassword = "";
-
-
+    function authHeader() {
+      return { "Authorization": "Basic " + btoa(savedUsername + ":" + savedPassword) };
+    }
     async function login() {
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
-
-      const testRes = await fetch("/api/admin/verify", {
-        method: "GET",
-        headers: {
-          "Authorization": "Basic " + btoa(username + ":" + password)
-        }
+      const res = await fetch("/api/admin/verify", {
+        headers: { "Authorization": "Basic " + btoa(username + ":" + password) }
       });
-
-      if (testRes.ok) {
+      if (res.ok) {
         savedUsername = username;
         savedPassword = password;
         document.getElementById("loginSection").style.display = "none";
         document.getElementById("uploadSection").style.display = "block";
+        loadFiles();
       } else {
-        document.getElementById("loginError").textContent = "Invalid password or username.";
+        document.getElementById("loginError").textContent = "Invalid username or password.";
       }
     }
-
+    async function loadFiles() {
+      const res = await fetch("/api/admin/files", { headers: authHeader() });
+      const data = await res.json();
+      const list = document.getElementById("fileList");
+      if (data.files.length === 0) {
+        list.innerHTML = '<li class="empty-note">No documents found in the knowledge base.</li>';
+        return;
+      }
+      list.innerHTML = data.files.map(name => `
+        <li>
+          <span class="file-name">📄 ${name}</span>
+          <button class="delete-btn" onclick="deleteFile('${name}')">Delete</button>
+        </li>
+      `).join("");
+    }
+    async function deleteFile(filename) {
+      if (!confirm(`Delete "${filename}"? This removes it from the data folder.`)) return;
+      const res = await fetch(`/api/admin/files/${encodeURIComponent(filename)}`, {
+        method: "DELETE",
+        headers: authHeader()
+      });
+      if (res.ok) {
+        loadFiles();
+      } else {
+        const data = await res.json();
+        alert("Error: " + data.detail);
+      }
+    }
+    async function reindex() {
+      const statusEl = document.getElementById("reindexStatus");
+      const btn = document.querySelector(".reindex-btn");
+      if (!confirm("This will wipe and rebuild the entire ChromaDB from current files and URLs. Continue?")) return;
+      btn.disabled = true;
+      statusEl.textContent = "⏳ Re-vectorizing... this may take a minute.";
+      statusEl.style.color = "#555";
+      const res = await fetch("/api/admin/reindex", {
+        method: "POST",
+        headers: authHeader()
+      });
+      const data = await res.json();
+      btn.disabled = false;
+      if (res.ok) {
+        statusEl.style.color = "green";
+        statusEl.textContent = "✅ " + data.message;
+      } else {
+        statusEl.style.color = "red";
+        statusEl.textContent = "❌ Error: " + (data.detail || "Something went wrong.");
+      }
+    }
     async function upload() {
       const file = document.getElementById("fileInput").files[0];
       const status = document.getElementById("status");
       if (!file) { status.textContent = "Please select a file."; return; }
-
       status.textContent = "Uploading and ingesting... this may take a moment.";
       const formData = new FormData();
       formData.append("file", file);
-
       const res = await fetch("/api/admin/upload", {
         method: "POST",
-        headers: {
-          "Authorization": "Basic " + btoa(savedUsername + ":" + savedPassword)
-        },
+        headers: authHeader(),
         body: formData
       });
-
       const data = await res.json();
       if (res.ok) {
-        status.textContent = `Success! Saved as ${data.saved_as} and knowledge base updated.`;
+        status.textContent = `✅ Saved as ${data.saved_as} and added to knowledge base.`;
+        loadFiles();
       } else {
-        status.textContent = `Error: ${data.detail}`;
+        status.textContent = `❌ Error: ${data.detail}`;
       }
     }
   </script>
