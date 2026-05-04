@@ -144,6 +144,57 @@ async def upload_document(
     return {"ok": True, "saved_as": txt_filename}
 
 
+@app.get("/api/admin/documents")
+def list_documents(credentials: HTTPBasicCredentials = Depends(verify_admin)):
+    """Return all user-uploaded documents in backend/data/ (txt and pdf only)."""
+    data_dir = PROJECT_ROOT / "backend" / "data"
+    non_document_files = {"urls.txt", "preview.txt"}
+    files = []
+    if data_dir.exists():
+        for f in sorted(data_dir.iterdir()):
+            if f.suffix in (".txt", ".pdf") and f.name not in non_document_files:
+                files.append({"name": f.name, "size": f.stat().st_size})
+    return {"documents": files}
+
+
+@app.delete("/api/admin/document/{filename}")
+def delete_document(
+    filename: str,
+    credentials: HTTPBasicCredentials = Depends(verify_admin),
+):
+    """
+    Remove a document from backend/data/ and delete its chunks from ChromaDB.
+    Accepts both .txt and .pdf files that were previously ingested.
+    """
+    data_dir = PROJECT_ROOT / "backend" / "data"
+    file_path = (data_dir / filename).resolve()
+
+    if not file_path.is_relative_to(data_dir.resolve()):
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+
+    if file_path.suffix not in (".txt", ".pdf"):
+        raise HTTPException(status_code=400, detail="Only .txt and .pdf files can be deleted.")
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found.")
+
+    # Remove matching chunks from ChromaDB before deleting the file.
+    from langchain_chroma import Chroma
+    from langchain_openai import OpenAIEmbeddings
+
+    chroma_dir = PROJECT_ROOT / "backend" / "chroma_db"
+    if chroma_dir.exists():
+        embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+        vector_db = Chroma(
+            persist_directory=str(chroma_dir),
+            embedding_function=embedding_model,
+        )
+        vector_db.delete(where={"source": filename})
+
+    file_path.unlink()
+    return {"ok": True, "deleted": filename}
+
+
 @app.post("/api/chat")
 def chat(request: ChatRequest):
     """

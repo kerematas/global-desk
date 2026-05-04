@@ -20,7 +20,7 @@ from bs4 import SoupStrainer
 from bs4 import BeautifulSoup
 import requests
 from langchain_core.documents import Document
-from PyPDF2 import PdfReader
+import pdfplumber
 
 # Some sites block requests without a recognizable User-Agent.
 os.environ["USER_AGENT"] = "the-global-desk/1.0"
@@ -63,8 +63,8 @@ def load_pdf_documents(pdf_dir="../data/pdfs"):
         if filename.endswith(".pdf"):
             filepath = os.path.join(pdf_dir, filename)
             print(f"  [PDF] {filename}")
-            reader = PdfReader(filepath)
-            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+            with pdfplumber.open(filepath) as pdf:
+                text = "\n".join(page.extract_text() or "" for page in pdf.pages)
             if text.strip():
                 documents.append(Document(
                     page_content=text,

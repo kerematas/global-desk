@@ -4,21 +4,43 @@
   <meta charset="UTF-8" />
   <title>Global Desk Admin</title>
   <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 60px auto; }
+    body { font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 0 16px; }
     h1 { font-size: 1.5rem; }
-    input { display: block; margin: 8px 0 16px; padding: 8px; width: 100%;
-            border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+    h2 { font-size: 1.1rem; margin: 0 0 12px; }
+    input[type="text"], input[type="password"] {
+      display: block; margin: 8px 0 16px; padding: 8px; width: 100%;
+      border: 1px solid #ccc; border-radius: 6px; font-size: 1rem;
+    }
     button { padding: 10px 20px; background: #2563eb; color: white; border: none;
              border-radius: 6px; cursor: pointer; font-size: 1rem; }
-    #uploadSection { display: none; margin-top: 24px; }
-    #status { margin-top: 16px; font-weight: bold; }
+    button:hover { background: #1d4ed8; }
+    #adminSections { display: none; }
+    #uploadSection { margin-bottom: 32px; }
+    #status { margin-top: 12px; font-weight: bold; }
+    #docsSection { border-top: 1px solid #e5e7eb; padding-top: 24px; }
+    #docList { list-style: none; padding: 0; margin: 0; }
+    #docList li {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 6px;
+      margin-bottom: 8px; background: #f9fafb;
+    }
+    .doc-name { font-size: 0.95rem; word-break: break-all; }
+    .doc-size { font-size: 0.8rem; color: #6b7280; margin-left: 8px; white-space: nowrap; }
+    .delete-btn {
+      padding: 6px 12px; background: #dc2626; color: white; border: none;
+      border-radius: 6px; cursor: pointer; font-size: 0.85rem; flex-shrink: 0; margin-left: 12px;
+    }
+    .delete-btn:hover { background: #b91c1c; }
+    #docsStatus { margin-top: 12px; font-size: 0.9rem; color: #374151; }
+    #noDocsMsg { color: #6b7280; font-size: 0.9rem; }
   </style>
   <a href="/" class="login-btn">Return</a>
   <style>
-  .login-btn { position: absolute; top: 20px; 
-              left: 40px; padding: 10px 16px; border-radius: 10px; background: #d82a25; color: white; font: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; text-decoration: none;   transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease; }
-
-  .login-btn:hover { background: #921d19; transform: translateY(-1px); }
+    .login-btn { position: absolute; top: 20px; left: 40px; padding: 10px 16px;
+                 border-radius: 10px; background: #d82a25; color: white; font: inherit;
+                 font-size: 0.95rem; font-weight: 700; cursor: pointer; text-decoration: none;
+                 transition: transform 160ms ease, background-color 160ms ease; }
+    .login-btn:hover { background: #921d19; transform: translateY(-1px); }
   </style>
 </head>
 <body>
@@ -35,12 +57,26 @@
     <div id="loginError" style="color:red; margin-top:10px;"></div>
   </div>
 
-  <!-- Upload Form (hidden until logged in) -->
-  <div id="uploadSection">
-    <p>Upload a PDF or DOCX to add it to the knowledge base.</p>
-    <input type="file" id="fileInput" accept=".pdf,.docx" />
-    <button onclick="upload()">Upload & Ingest</button>
-    <div id="status"></div>
+  <!-- Admin Sections (hidden until logged in) -->
+  <div id="adminSections">
+
+    <!-- Upload -->
+    <div id="uploadSection">
+      <h2>Upload Document</h2>
+      <p style="margin:0 0 12px; color:#374151;">Upload a PDF or DOCX to add it to the knowledge base.</p>
+      <input type="file" id="fileInput" accept=".pdf,.docx" />
+      <button onclick="upload()">Upload & Ingest</button>
+      <div id="status"></div>
+    </div>
+
+    <!-- Document Library -->
+    <div id="docsSection">
+      <h2>Knowledge Base Documents</h2>
+      <ul id="docList"></ul>
+      <p id="noDocsMsg" style="display:none;">No documents found in the knowledge base.</p>
+      <div id="docsStatus"></div>
+    </div>
+
   </div>
 
   <script>
@@ -50,23 +86,31 @@
     let savedUsername = "";
     let savedPassword = "";
 
+    function authHeader() {
+      return "Basic " + btoa(savedUsername + ":" + savedPassword);
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
 
     async function login() {
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
 
-      const testRes = await fetch("/api/admin/verify", {
+      const res = await fetch("/api/admin/verify", {
         method: "GET",
-        headers: {
-          "Authorization": "Basic " + btoa(username + ":" + password)
-        }
+        headers: { "Authorization": "Basic " + btoa(username + ":" + password) }
       });
 
-      if (testRes.ok) {
+      if (res.ok) {
         savedUsername = username;
         savedPassword = password;
         document.getElementById("loginSection").style.display = "none";
-        document.getElementById("uploadSection").style.display = "block";
+        document.getElementById("adminSections").style.display = "block";
+        loadDocuments();
       } else {
         document.getElementById("loginError").textContent = "Invalid password or username.";
       }
@@ -83,17 +127,90 @@
 
       const res = await fetch("/api/admin/upload", {
         method: "POST",
-        headers: {
-          "Authorization": "Basic " + btoa(savedUsername + ":" + savedPassword)
-        },
+        headers: { "Authorization": authHeader() },
         body: formData
       });
 
       const data = await res.json();
       if (res.ok) {
         status.textContent = `Success! Saved as ${data.saved_as} and knowledge base updated.`;
+        document.getElementById("fileInput").value = "";
+        loadDocuments();
       } else {
         status.textContent = `Error: ${data.detail}`;
+      }
+    }
+
+    async function loadDocuments() {
+      const list = document.getElementById("docList");
+      const noDocsMsg = document.getElementById("noDocsMsg");
+      const docsStatus = document.getElementById("docsStatus");
+
+      list.innerHTML = "";
+      noDocsMsg.style.display = "none";
+      docsStatus.textContent = "Loading...";
+
+      const res = await fetch("/api/admin/documents", {
+        headers: { "Authorization": authHeader() }
+      });
+
+      if (!res.ok) {
+        docsStatus.textContent = "Could not load documents.";
+        return;
+      }
+
+      const data = await res.json();
+      docsStatus.textContent = "";
+
+      if (data.documents.length === 0) {
+        noDocsMsg.style.display = "block";
+        return;
+      }
+
+      data.documents.forEach((doc) => {
+        const li = document.createElement("li");
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "doc-name";
+        nameSpan.textContent = doc.name;
+
+        const sizeSpan = document.createElement("span");
+        sizeSpan.className = "doc-size";
+        sizeSpan.textContent = formatSize(doc.size);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "delete-btn";
+        deleteBtn.textContent = "Delete";
+        deleteBtn.onclick = () => deleteDocument(doc.name, li, deleteBtn);
+
+        li.append(nameSpan, sizeSpan, deleteBtn);
+        list.appendChild(li);
+      });
+    }
+
+    async function deleteDocument(filename, listItem, btn) {
+      if (!confirm(`Delete "${filename}" from the knowledge base? This cannot be undone.`)) return;
+
+      btn.disabled = true;
+      btn.textContent = "Deleting...";
+
+      const res = await fetch(`/api/admin/document/${encodeURIComponent(filename)}`, {
+        method: "DELETE",
+        headers: { "Authorization": authHeader() }
+      });
+
+      if (res.ok) {
+        listItem.remove();
+        const list = document.getElementById("docList");
+        if (list.children.length === 0) {
+          document.getElementById("noDocsMsg").style.display = "block";
+        }
+        document.getElementById("docsStatus").textContent = `"${filename}" deleted successfully.`;
+      } else {
+        const data = await res.json();
+        btn.disabled = false;
+        btn.textContent = "Delete";
+        document.getElementById("docsStatus").textContent = `Error: ${data.detail}`;
       }
     }
   </script>
