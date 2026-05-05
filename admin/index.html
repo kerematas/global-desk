@@ -172,29 +172,29 @@
 
         const nameSpan = document.createElement("span");
         nameSpan.className = "doc-name";
-        nameSpan.textContent = doc.name;
+        nameSpan.textContent = doc.source;
 
-        const sizeSpan = document.createElement("span");
-        sizeSpan.className = "doc-size";
-        sizeSpan.textContent = formatSize(doc.size);
+        const badge = document.createElement("span");
+        badge.className = "doc-size";
+        badge.textContent = doc.type === "url" ? "URL" : "File";
 
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "delete-btn";
         deleteBtn.textContent = "Delete";
-        deleteBtn.onclick = () => deleteDocument(doc.name, li, deleteBtn);
+        deleteBtn.onclick = () => deleteDocument(doc.source, li, deleteBtn);
 
-        li.append(nameSpan, sizeSpan, deleteBtn);
+        li.append(nameSpan, badge, deleteBtn);
         list.appendChild(li);
       });
     }
 
-    async function deleteDocument(filename, listItem, btn) {
-      if (!confirm(`Delete "${filename}" from the knowledge base? This cannot be undone.`)) return;
+    async function deleteDocument(source, listItem, btn) {
+      if (!confirm(`Delete "${source}" from the knowledge base? This cannot be undone.`)) return;
 
       btn.disabled = true;
       btn.textContent = "Deleting...";
 
-      const res = await fetch(`/api/admin/document/${encodeURIComponent(filename)}`, {
+      const res = await fetch(`/api/admin/document?source=${encodeURIComponent(source)}`, {
         method: "DELETE",
         headers: { "Authorization": authHeader() }
       });
@@ -205,7 +205,7 @@
         if (list.children.length === 0) {
           document.getElementById("noDocsMsg").style.display = "block";
         }
-        document.getElementById("docsStatus").textContent = `"${filename}" deleted successfully.`;
+        document.getElementById("docsStatus").textContent = `"${source}" deleted successfully.`;
       } else {
         const data = await res.json();
         btn.disabled = false;

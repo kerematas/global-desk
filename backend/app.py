@@ -146,53 +146,77 @@ async def upload_document(
 
 @app.get("/api/admin/documents")
 def list_documents(credentials: HTTPBasicCredentials = Depends(verify_admin)):
-    """Return all user-uploaded documents in backend/data/ (txt and pdf only)."""
-    data_dir = PROJECT_ROOT / "backend" / "data"
-    non_document_files = {"urls.txt", "preview.txt"}
-    files = []
-    if data_dir.exists():
-        for f in sorted(data_dir.iterdir()):
-            if f.suffix in (".txt", ".pdf") and f.name not in non_document_files:
-                files.append({"name": f.name, "size": f.stat().st_size})
-    return {"documents": files}
+    """Return all unique sources currently indexed in the ChromaDB knowledge base."""
+    if not CHROMA_SQLITE_FILE.exists():
+        return {"documents": []}
 
-
-@app.delete("/api/admin/document/{filename}")
-def delete_document(
-    filename: str,
-    credentials: HTTPBasicCredentials = Depends(verify_admin),
-):
-    """
-    Remove a document from backend/data/ and delete its chunks from ChromaDB.
-    Accepts both .txt and .pdf files that were previously ingested.
-    """
-    data_dir = PROJECT_ROOT / "backend" / "data"
-    file_path = (data_dir / filename).resolve()
-
-    if not file_path.is_relative_to(data_dir.resolve()):
-        raise HTTPException(status_code=400, detail="Invalid filename.")
-
-    if file_path.suffix not in (".txt", ".pdf"):
-        raise HTTPException(status_code=400, detail="Only .txt and .pdf files can be deleted.")
-
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found.")
-
-    # Remove matching chunks from ChromaDB before deleting the file.
     from langchain_chroma import Chroma
     from langchain_openai import OpenAIEmbeddings
 
     chroma_dir = PROJECT_ROOT / "backend" / "chroma_db"
-    if chroma_dir.exists():
-        embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
-        vector_db = Chroma(
-            persist_directory=str(chroma_dir),
-            embedding_function=embedding_model,
-        )
-        vector_db.delete(where={"source": filename})
+    embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    vector_db = Chroma(
+        persist_directory=str(chroma_dir),
+        embedding_function=embedding_model,
+    )
 
-    file_path.unlink()
-    return {"ok": True, "deleted": filename}
+    result = vector_db._collection.get(include=["metadatas"])
+    seen: set[str] = set()
+    documents = []
+    for metadata in result["metadatas"]:
+        source = (metadata or {}).get("source", "").strip()
+        if source and source not in seen:
+            seen.add(source)
+            is_url = source.startswith("http://") or source.startswith("https://")
+            documents.append({"source": source, "type": "url" if is_url else "file"})
+
+    documents.sort(key=lambda d: d["source"])
+    return {"documents": documents}
+
+
+@app.delete("/api/admin/document")
+def delete_document(
+    source: str,
+    credentials: HTTPBasicCredentials = Depends(verify_admin),
+):
+    """
+    Remove all ChromaDB chunks for the given source, then delete the file from
+    disk if it exists in any of the project data directories.
+    Works for both file-based sources (filenames) and URL-based sources.
+    """
+    if not source.strip():
+        raise HTTPException(status_code=400, detail="Source must not be empty.")
+
+    from langchain_chroma import Chroma
+    from langchain_openai import OpenAIEmbeddings
+
+    chroma_dir = PROJECT_ROOT / "backend" / "chroma_db"
+    if not chroma_dir.exists():
+        raise HTTPException(status_code=404, detail="Knowledge base not found.")
+
+    embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    vector_db = Chroma(
+        persist_directory=str(chroma_dir),
+        embedding_function=embedding_model,
+    )
+    vector_db.delete(where={"source": source})
+
+    # For file-based sources, also remove the file from disk if it exists.
+    is_url = source.startswith("http://") or source.startswith("https://")
+    if not is_url:
+        data_root = PROJECT_ROOT / "backend" / "data"
+        candidate_dirs = [data_root, data_root / "pdfs", data_root / "txt"]
+        for directory in candidate_dirs:
+            candidate = (directory / source).resolve()
+            try:
+                candidate.relative_to(directory.resolve())
+            except ValueError:
+                continue
+            if candidate.exists():
+                candidate.unlink()
+                break
+
+    return {"ok": True, "deleted": source}
 
 
 @app.post("/api/chat")

@@ -54,7 +54,7 @@ def load_web_documents(urls):
             ))
     return documents
 
-def load_pdf_documents(pdf_dir="../data/pdfs"):
+def load_pdf_documents(pdf_dir=DATA_DIR / "pdfs"):
     documents = []
     if not os.path.exists(pdf_dir):
         return documents
@@ -72,7 +72,7 @@ def load_pdf_documents(pdf_dir="../data/pdfs"):
                 ))
     return documents
 
-def load_txt_documents(txt_dir="../data/txt"):
+def load_txt_documents(txt_dir=DATA_DIR / "txt"):
     documents = []
     if not os.path.exists(txt_dir):
         return documents
