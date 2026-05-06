@@ -1,7 +1,10 @@
 /*
-  This file keeps the chat logic intentionally small.
-  The goal is to make the first frontend easy to read, easy to demo,
-  and easy to connect to a real backend later.
+  frontend/app.js — Client-side chat logic for Global Desk.
+
+  Handles the single-conversation UI: sending messages to the /api/chat
+  endpoint, rendering assistant replies with formatted text and source
+  links, persisting chat history in localStorage, and managing the
+  typing indicator and starter prompt chips.
 */
 
 const STORAGE_KEY = "global-desk-single-chat-v2";

@@ -1,8 +1,17 @@
 """
-Small FastAPI app that serves both the frontend and the chat API.
+FastAPI application that serves the Global Desk frontend and all backend APIs.
 
-This keeps development simple:
-one command starts the site and the RAG backend together.
+Endpoints:
+  - GET  /              — serves the main chat UI (frontend/index.html)
+  - GET  /api/health    — readiness check for the API key and knowledge base
+  - POST /api/chat      — accepts a user message + history, returns a RAG answer
+  - GET  /api/admin/verify    — validates admin credentials (HTTP Basic Auth)
+  - POST /api/admin/upload    — upload a PDF/DOCX, extract text, add to ChromaDB
+  - GET  /api/admin/documents — list all sources currently in the knowledge base
+  - DELETE /api/admin/document — remove a source from ChromaDB and disk
+
+Run with:
+    uvicorn backend.app:app --reload
 """
 
 from __future__ import annotations
