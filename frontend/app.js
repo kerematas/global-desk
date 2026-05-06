@@ -1,20 +1,21 @@
 /*
-  This file keeps the chat logic intentionally small.
-  The goal is to make the first frontend easy to read, easy to demo,
-  and easy to connect to a real backend later.
+  frontend/app.js — Client-side chat logic for Global Desk.
+
+  Handles the single-conversation UI: sending messages to the /api/chat
+  endpoint, rendering assistant replies with formatted text and source
+  links, persisting chat history in localStorage, and managing the
+  typing indicator and starter prompt chips.
 */
 
+// localStorage key for saving the conversation between page refreshes
 const STORAGE_KEY = "global-desk-single-chat-v2";
 
-/*
-  This starter message is shown on first load and after a reset.
-  Keeping it in JavaScript means we can re-render it whenever needed.
-*/
+// default greeting shown on first load and after clearing the chat
 const STARTER_MESSAGES = [
   {
     role: "assistant",
     author: "Global Desk",
-    skipForApi: true,
+    skipForApi: true,  // don't send the greeting to the API as part of history
     text:
       "Hi! Ask a question about CPT, OPT, travel, taxes, work authorization, or maintaining status. I’ll answer using the existing Global Desk knowledge base."
   }
@@ -64,13 +65,13 @@ function saveMessages() {
 }
 
 /*
-  Convert our UI message objects into the simpler API history shape.
-  The current user message is sent separately, so we only pass prior turns here.
+  Build the chat history array that gets sent to the backend.
+  We exclude the latest message (sent separately) and the starter greeting.
 */
 function buildApiHistory() {
   return messages
-    .slice(0, -1)
-    .filter((message) => !message.skipForApi)
+    .slice(0, -1)                                    // everything except the newest message
+    .filter((message) => !message.skipForApi)         // skip the starter greeting
     .filter((message) => message.role === "user" || message.role === "assistant")
     .map((message) => ({
       role: message.role,
@@ -156,6 +157,7 @@ function appendFormattedMessage(container, text) {
       return;
     }
 
+    // check if the first line looks like a section title (ends with ":")
     const normalizedTitle = lines[0]
       .replace(/^[-*]\s+/, "")
       .replace(/^\d+\.\s+/, "");
@@ -170,6 +172,7 @@ function appendFormattedMessage(container, text) {
       container.appendChild(title);
     }
 
+    // if all lines start with - or *, render as a bullet list
     if (contentLines.every((line) => /^[-*]\s+/.test(line))) {
       const list = document.createElement("ul");
       list.className = "message-list";
@@ -184,6 +187,7 @@ function appendFormattedMessage(container, text) {
       return;
     }
 
+    // if all lines start with a number, render as a numbered list
     if (contentLines.every((line) => /^\d+\.\s+/.test(line))) {
       const list = document.createElement("ol");
       list.className = "message-list";
@@ -198,6 +202,7 @@ function appendFormattedMessage(container, text) {
       return;
     }
 
+    // otherwise just render as a plain paragraph
     const paragraph = document.createElement("p");
     paragraph.textContent = contentLines.join("\n");
     container.appendChild(paragraph);
@@ -321,13 +326,14 @@ async function getAssistantReply(userMessage) {
 }
 
 /*
-  Main submit handler for typed messages.
+  Main submit handler — runs when the user sends a message.
 */
 async function handleSubmit(event) {
   event.preventDefault();
 
   const text = messageInput.value.trim();
 
+  // don't send empty messages or double-send while waiting
   if (!text || isWaitingForReply) {
     return;
   }
@@ -335,6 +341,7 @@ async function handleSubmit(event) {
   isWaitingForReply = true;
   sendButton.disabled = true;
 
+  // add the user's message to the chat right away
   messages.push({
     role: "user",
     author: "You",
@@ -344,15 +351,18 @@ async function handleSubmit(event) {
   saveMessages();
   renderMessages();
 
+  // clear the input and show the typing dots
   messageInput.value = "";
   autoResizeInput();
   showTypingIndicator();
 
   try {
+    // send to the backend and wait for the RAG answer
     const result = await getAssistantReply(text);
 
     hideTypingIndicator();
 
+    // add the assistant's response to the chat
     messages.push({
       role: "assistant",
       author: "Global Desk",
@@ -363,6 +373,7 @@ async function handleSubmit(event) {
     saveMessages();
     renderMessages();
   } catch (error) {
+    // if something goes wrong, show the error as a chat message
     console.error("Could not create assistant reply:", error);
     hideTypingIndicator();
 

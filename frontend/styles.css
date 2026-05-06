@@ -1,7 +1,10 @@
 /*
-  Google Fonts are used here to make the interface feel more intentional.
-  Instrument Serif gives the product a more editorial / academic personality,
-  while Manrope keeps the UI clean and readable.
+  frontend/styles.css — Styles for the Global Desk chat interface.
+
+  Layout: two-column desktop grid with a dark brand panel on the left
+  and a light chat panel on the right. Collapses to a single column
+  on screens narrower than 980px. Uses Davidson College brand colors
+  and typography (Instrument Serif + Manrope via Google Fonts).
 */
 @import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap");
 

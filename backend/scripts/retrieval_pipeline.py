@@ -2,7 +2,7 @@
 Interactive terminal chat against the ChromaDB knowledge base.
 
 This script is a standalone CLI tool — run it directly to ask questions and get
-RAG-grounded answers in the terminal. It is also used by the evaluation pipeline,
+RAG-grounded answers in the terminal. It is also used by the test/evaluation pipeline,
 which drives it via subprocess stdin.
 
 Note: the embeddings, db, and model are all initialised at module import time.
@@ -23,47 +23,43 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
 persistent_directory = BACKEND_DIR / "chroma_db"
 
-# These are module-level singletons — one DB connection and one model per process.
+# set up the embedding model, vector db, and chat model once at startup
 embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 db = Chroma(persist_directory=str(persistent_directory), embedding_function=embeddings)
 model = ChatOpenAI(model="gpt-4o")
 
-# Grows with each turn so follow-up questions have context.
-# Since this is a plain CLI script (one process = one session), a global list is fine.
+# keeps track of the conversation so follow-up questions make sense
 chat_history = []
 
 def ask_question(user_question):
     print(f"\n--- You asked: {user_question} ---")
-    
-    # Step 1: Make the question clear using conversation history
+
+    # if there's prior conversation, rewrite the question so it stands on its own
     if chat_history:
-        # Ask AI to make the question standalone
         messages = [
             SystemMessage(content="Given the chat history, rewrite the new question to be standalone and searchable. Just return the rewritten question."),
         ] + chat_history + [
             HumanMessage(content=f"New question: {user_question}")
         ]
-        
+
         result = model.invoke(messages)
         search_question = result.content.strip()
         print(f"Searching for: {search_question}")
     else:
         search_question = user_question
-    
-    # Step 2: Find relevant documents
+
+    # search the vector db for the 3 most relevant chunks
     retriever = db.as_retriever(search_kwargs={"k": 3})
     docs = retriever.invoke(search_question)
-    
+
+    # show a quick preview of what we found
     print(f"Found {len(docs)} relevant documents:")
     for i, doc in enumerate(docs, 1):
-        # Show first 2 lines of each document
         lines = doc.page_content.split('\n')[:2]
         preview = '\n'.join(lines)
         print(f"  Doc {i}: {preview}...")
-    
-    # Step 3: Build the final prompt with retrieved context inline.
-    # The explicit "I don't have enough information" fallback keeps the model
-    # from hallucinating when the retrieval comes up empty.
+
+    # build the prompt with the retrieved docs as context
     document_context = "\n".join([f"- {doc.page_content}" for doc in docs])
     combined_input = f"""Based on the following documents, please answer this question: {user_question}
 
@@ -72,21 +68,21 @@ def ask_question(user_question):
 
     Please provide a clear, helpful answer using only the information from these documents. If you can't find the answer in the documents, say "I don't have enough information to answer that question based on the provided documents."
     """
-    
-    # Step 4: Get the answer
+
+    # send everything to the LLM (system prompt + history + new question with docs)
     messages = [
         SystemMessage(content="You are a helpful assistant that answers questions based on provided documents and conversation history."),
     ] + chat_history + [
         HumanMessage(content=combined_input)
     ]
-    
+
     result = model.invoke(messages)
     answer = result.content
-    
-    # Step 5: Remember this conversation
+
+    # save this exchange so future questions have context
     chat_history.append(HumanMessage(content=user_question))
     chat_history.append(AIMessage(content=answer))
-    
+
     print(f"Answer: {answer}")
     return answer
 
