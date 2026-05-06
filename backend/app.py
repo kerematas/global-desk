@@ -144,6 +144,81 @@ async def upload_document(
     return {"ok": True, "saved_as": txt_filename}
 
 
+@app.get("/api/admin/documents")
+def list_documents(credentials: HTTPBasicCredentials = Depends(verify_admin)):
+    """Return all unique sources currently indexed in the ChromaDB knowledge base."""
+    if not CHROMA_SQLITE_FILE.exists():
+        return {"documents": []}
+
+    from langchain_chroma import Chroma
+    from langchain_openai import OpenAIEmbeddings
+
+    chroma_dir = PROJECT_ROOT / "backend" / "chroma_db"
+    embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    vector_db = Chroma(
+        persist_directory=str(chroma_dir),
+        embedding_function=embedding_model,
+    )
+
+    result = vector_db._collection.get(include=["metadatas"])
+    seen: set[str] = set()
+    documents = []
+    for metadata in result["metadatas"]:
+        source = (metadata or {}).get("source", "").strip()
+        if source and source not in seen:
+            seen.add(source)
+            is_url = source.startswith("http://") or source.startswith("https://")
+            documents.append({"source": source, "type": "url" if is_url else "file"})
+
+    documents.sort(key=lambda d: d["source"])
+    return {"documents": documents}
+
+
+@app.delete("/api/admin/document")
+def delete_document(
+    source: str,
+    credentials: HTTPBasicCredentials = Depends(verify_admin),
+):
+    """
+    Remove all ChromaDB chunks for the given source, then delete the file from
+    disk if it exists in any of the project data directories.
+    Works for both file-based sources (filenames) and URL-based sources.
+    """
+    if not source.strip():
+        raise HTTPException(status_code=400, detail="Source must not be empty.")
+
+    from langchain_chroma import Chroma
+    from langchain_openai import OpenAIEmbeddings
+
+    chroma_dir = PROJECT_ROOT / "backend" / "chroma_db"
+    if not chroma_dir.exists():
+        raise HTTPException(status_code=404, detail="Knowledge base not found.")
+
+    embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    vector_db = Chroma(
+        persist_directory=str(chroma_dir),
+        embedding_function=embedding_model,
+    )
+    vector_db.delete(where={"source": source})
+
+    # For file-based sources, also remove the file from disk if it exists.
+    is_url = source.startswith("http://") or source.startswith("https://")
+    if not is_url:
+        data_root = PROJECT_ROOT / "backend" / "data"
+        candidate_dirs = [data_root, data_root / "pdfs", data_root / "txt"]
+        for directory in candidate_dirs:
+            candidate = (directory / source).resolve()
+            try:
+                candidate.relative_to(directory.resolve())
+            except ValueError:
+                continue
+            if candidate.exists():
+                candidate.unlink()
+                break
+
+    return {"ok": True, "deleted": source}
+
+
 @app.post("/api/chat")
 def chat(request: ChatRequest):
     """
