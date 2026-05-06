@@ -20,7 +20,9 @@ PYTHON_EXE = "python"
 
 
 def parse_questions(filepath: str):
+    """Read the questions file and return a list of (number, question) tuples."""
     text = Path(filepath).read_text(encoding="utf-8")
+    # matches lines like "1. What is CPT?" — captures the number and the question text
     pattern = re.compile(r"^\s*(\d+)\.\s+(.*)$", re.MULTILINE)
     return [(int(n), q.strip()) for n, q in pattern.findall(text)]
 
@@ -66,11 +68,12 @@ def run_target_script(question: str) -> str:
 
 def main():
     questions = parse_questions(QUESTIONS_FILE)
-    last_done = get_last_completed(OUTPUT_FILE)
+    last_done = get_last_completed(OUTPUT_FILE)  # skip questions we already answered
 
     output_path = Path(OUTPUT_FILE)
 
     for number, question in questions:
+        # resume support — skip anything already in the output file
         if number <= last_done:
             continue
 
@@ -82,6 +85,7 @@ def main():
             print(f"Stopped at {number}: {e}")
             break
 
+        # append each answer right away so progress isn't lost on crash
         with output_path.open("a", encoding="utf-8") as f:
             f.write(f"{number}. {answer}\n")
 

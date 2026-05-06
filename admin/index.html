@@ -93,16 +93,19 @@
     let savedUsername = "";
     let savedPassword = "";
 
+    // build the auth header for every API request
     function authHeader() {
       return "Basic " + btoa(savedUsername + ":" + savedPassword);
     }
 
+    // helper for displaying file sizes (not currently used but kept for future use)
     function formatSize(bytes) {
       if (bytes < 1024) return bytes + " B";
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
       return (bytes / (1024 * 1024)).toFixed(1) + " MB";
     }
 
+    // try to log in by hitting the verify endpoint with the entered credentials
     async function login() {
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
@@ -113,16 +116,18 @@
       });
 
       if (res.ok) {
+        // save creds in memory and show the admin panel
         savedUsername = username;
         savedPassword = password;
         document.getElementById("loginSection").style.display = "none";
         document.getElementById("adminSections").style.display = "block";
-        loadDocuments();
+        loadDocuments();  // load the document list right away
       } else {
         document.getElementById("loginError").textContent = "Invalid password or username.";
       }
     }
 
+    // upload a file to the backend, which extracts text and adds it to the vector db
     async function upload() {
       const file = document.getElementById("fileInput").files[0];
       const status = document.getElementById("status");
@@ -142,12 +147,13 @@
       if (res.ok) {
         status.textContent = `Success! Saved as ${data.saved_as} and knowledge base updated.`;
         document.getElementById("fileInput").value = "";
-        loadDocuments();
+        loadDocuments();  // refresh the list to show the new doc
       } else {
         status.textContent = `Error: ${data.detail}`;
       }
     }
 
+    // fetch all documents from the knowledge base and render them as a list
     async function loadDocuments() {
       const list = document.getElementById("docList");
       const noDocsMsg = document.getElementById("noDocsMsg");
@@ -174,6 +180,7 @@
         return;
       }
 
+      // build a list item for each document with a name, type badge, and delete button
       data.documents.forEach((doc) => {
         const li = document.createElement("li");
 
@@ -195,6 +202,7 @@
       });
     }
 
+    // delete a document from the knowledge base after confirming with the user
     async function deleteDocument(source, listItem, btn) {
       if (!confirm(`Delete "${source}" from the knowledge base? This cannot be undone.`)) return;
 
@@ -207,6 +215,7 @@
       });
 
       if (res.ok) {
+        // remove the item from the DOM and show empty message if needed
         listItem.remove();
         const list = document.getElementById("docList");
         if (list.children.length === 0) {

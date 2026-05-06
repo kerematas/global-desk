@@ -72,18 +72,21 @@ class RAGService:
 
         normalized_history = history or []
 
+        # make sure we have everything we need before doing any work
         self._require_openai_api_key()
         self._require_chroma_db()
 
         model = self._create_chat_model()
         db = self._create_vector_db()
 
+        # if it's a follow-up question, rewrite it to be standalone for better search
         search_question = self._build_search_question(
             user_message=user_message,
             history=normalized_history,
             model=model,
         )
 
+        # search the vector db for relevant chunks, then generate an answer
         docs = self._retrieve_documents(search_question, db)
         answer = self._generate_answer(
             user_message=user_message,
@@ -92,6 +95,7 @@ class RAGService:
             model=model,
         )
 
+        # don't show sources if the model said it couldn't find an answer
         sources = [] if self._is_refusal(answer) else self._build_source_list(docs)
 
         return {
@@ -138,9 +142,11 @@ class RAGService:
         """
 
         history_messages = self._history_to_langchain_messages(history)
+        # no history = no need to rewrite, just search with the original question
         if not history_messages:
             return user_message
 
+        # ask the LLM to rewrite the follow-up into a self-contained search query
         rewrite_messages = [
             SystemMessage(
                 content=(
@@ -157,6 +163,7 @@ class RAGService:
         return result.content.strip()
 
     def _retrieve_documents(self, search_question: str, db: Chroma) -> list[Any]:
+        # grab the top k most similar chunks from the vector db
         retriever = db.as_retriever(search_kwargs={"k": self.num_results})
         return retriever.invoke(search_question)
 
@@ -293,11 +300,12 @@ class RAGService:
         """
 
         cleaned = text.strip()
-        cleaned = cleaned.replace("**", "")
-        cleaned = cleaned.replace("__", "")
-        cleaned = cleaned.replace("`", "")
-        cleaned = re.sub(r"\s*\(References?:[^)]*\)", "", cleaned)
-        cleaned = re.sub(r"\[\d+(?:,\s*\d+)*\]", "", cleaned)
-        cleaned = re.sub(r"(?m)^#{1,6}\s*", "", cleaned)
-        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        # strip markdown formatting since our frontend doesn't render it
+        cleaned = cleaned.replace("**", "")   # bold
+        cleaned = cleaned.replace("__", "")   # bold alt
+        cleaned = cleaned.replace("`", "")    # code
+        cleaned = re.sub(r"\s*\(References?:[^)]*\)", "", cleaned)  # (References: ...)
+        cleaned = re.sub(r"\[\d+(?:,\s*\d+)*\]", "", cleaned)     # [1], [2,3] citation markers
+        cleaned = re.sub(r"(?m)^#{1,6}\s*", "", cleaned)           # markdown headings
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)               # collapse extra blank lines
         return cleaned

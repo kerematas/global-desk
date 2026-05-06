@@ -36,13 +36,14 @@ from backend.rag_service import CHROMA_SQLITE_FILE, ENV_PATH, RAGService, RAGSer
 
 load_dotenv()
 
+# figure out where the project lives so we can serve frontend files
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 INDEX_FILE = FRONTEND_DIR / "index.html"
 
 app = FastAPI(title="Global Desk")
-rag_service = RAGService()
-security = HTTPBasic()
+rag_service = RAGService()  # shared RAG instance, handles all chat queries
+security = HTTPBasic()      # used to protect admin routes
 
 class ChatHistoryItem(BaseModel):
     """One prior chat turn sent from the browser."""
@@ -97,6 +98,7 @@ async def upload_document(
     Accept a PDF or DOCX upload, extract its text, save it to backend/data/,
     and incrementally add it to the existing ChromaDB knowledge base.
     """
+    # only allow pdf and docx uploads
     allowed_types = [
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -108,11 +110,13 @@ async def upload_document(
     data_dir = PROJECT_ROOT / "backend" / "data"
     data_dir.mkdir(exist_ok=True)
 
+    # save the upload to a temp file so we can read it with pdfplumber or python-docx
     suffix = ".pdf" if file.content_type == "application/pdf" else ".docx"
     temp_path = data_dir / f"_temp_{file.filename}"
     with open(temp_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
+    # extract the raw text from the file
     try:
         if suffix == ".pdf":
             with pdfplumber.open(temp_path) as pdf:
@@ -121,22 +125,24 @@ async def upload_document(
             doc = DocxDocument(temp_path)
             text = "\n".join(p.text for p in doc.paragraphs)
     finally:
-        temp_path.unlink(missing_ok=True)
+        temp_path.unlink(missing_ok=True)  # clean up temp file no matter what
 
     if not text.strip():
         raise HTTPException(status_code=400, detail="Could not extract text from file.")
 
+    # save extracted text as a .txt file in backend/data/ for future reference
     txt_filename = Path(file.filename).stem + ".txt"
     txt_path = data_dir / txt_filename
     with open(txt_path, "w") as f:
         f.write(text)
 
-    # Deferred imports — these pull in heavy ML libs and we only need them during upload.
+    # heavy ML imports are deferred so they only load when someone actually uploads
     from backend.scripts.ingestion_pipeline import split_documents
     from langchain_chroma import Chroma
     from langchain_core.documents import Document as LangchainDocument
     from langchain_openai import OpenAIEmbeddings
 
+    # chunk the text and add it to the existing vector db
     new_doc = LangchainDocument(page_content=text, metadata={"source": txt_filename})
     chunks = split_documents([new_doc])
 
@@ -169,6 +175,7 @@ def list_documents(credentials: HTTPBasicCredentials = Depends(verify_admin)):
         embedding_function=embedding_model,
     )
 
+    # pull all chunk metadata from chroma and deduplicate by source name
     result = vector_db._collection.get(include=["metadatas"])
     seen: set[str] = set()
     documents = []
@@ -208,15 +215,17 @@ def delete_document(
         persist_directory=str(chroma_dir),
         embedding_function=embedding_model,
     )
+    # remove all chunks with this source from the vector db
     vector_db.delete(where={"source": source})
 
-    # For file-based sources, also remove the file from disk if it exists.
+    # if it's a file (not a URL), also delete it from disk
     is_url = source.startswith("http://") or source.startswith("https://")
     if not is_url:
         data_root = PROJECT_ROOT / "backend" / "data"
         candidate_dirs = [data_root, data_root / "pdfs", data_root / "txt"]
         for directory in candidate_dirs:
             candidate = (directory / source).resolve()
+            # make sure the path stays inside the data directory (prevents path traversal)
             try:
                 candidate.relative_to(directory.resolve())
             except ValueError:
@@ -234,13 +243,16 @@ def chat(request: ChatRequest):
     Receive one user message plus prior history and return the RAG answer.
     """
     try:
+        # convert pydantic models to plain dicts and pass to the RAG service
         return rag_service.answer_question(
             message=request.message,
             history=[item.model_dump() for item in request.history],
         )
     except RAGServiceError as error:
+        # known errors (missing API key, no knowledge base, etc.)
         return JSONResponse(status_code=400, content={"error": str(error)})
     except Exception as error:
+        # catch-all so the frontend always gets a clean JSON error
         print(f"Unexpected chat error: {error}")
         return JSONResponse(
             status_code=500,
@@ -259,5 +271,6 @@ def read_index() -> FileResponse:
 
 
 
+# serve frontend files at /static and the admin page at /admin
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 app.mount("/admin", StaticFiles(directory=PROJECT_ROOT / "admin", html=True), name="admin")

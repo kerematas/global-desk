@@ -24,10 +24,11 @@ import pdfplumber
 os.environ["USER_AGENT"] = "the-global-desk/1.0"
 load_dotenv()
 
+# paths relative to this script's location
 SCRIPT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = SCRIPT_DIR.parent
-DATA_DIR = BACKEND_DIR / "data"
-CHROMA_DIR = BACKEND_DIR / "chroma_db"
+DATA_DIR = BACKEND_DIR / "data"         # where pdfs, txts, and urls.txt live
+CHROMA_DIR = BACKEND_DIR / "chroma_db"  # where the vector db gets saved
 
 def load_urls(filepath=DATA_DIR / "urls.txt"):
     """Read URLs from a plain text file, one per line. Lines starting with # are ignored."""
@@ -41,6 +42,7 @@ def load_urls(filepath=DATA_DIR / "urls.txt"):
     return urls
 
 def load_web_documents(urls):
+    """Scrape each URL and turn it into a LangChain Document."""
     documents = []
     for url in urls:
         print(f"  [WEB] {url}")
@@ -53,6 +55,7 @@ def load_web_documents(urls):
     return documents
 
 def load_pdf_documents(pdf_dir=DATA_DIR / "pdfs"):
+    """Read all PDFs from the pdfs folder and extract their text."""
     documents = []
     if not os.path.exists(pdf_dir):
         return documents
@@ -61,6 +64,7 @@ def load_pdf_documents(pdf_dir=DATA_DIR / "pdfs"):
         if filename.endswith(".pdf"):
             filepath = os.path.join(pdf_dir, filename)
             print(f"  [PDF] {filename}")
+            # extract text from every page and join them together
             with pdfplumber.open(filepath) as pdf:
                 text = "\n".join(page.extract_text() or "" for page in pdf.pages)
             if text.strip():
@@ -71,6 +75,7 @@ def load_pdf_documents(pdf_dir=DATA_DIR / "pdfs"):
     return documents
 
 def load_txt_documents(txt_dir=DATA_DIR / "txt"):
+    """Read all .txt files from the txt folder."""
     documents = []
     if not os.path.exists(txt_dir):
         return documents
@@ -89,8 +94,10 @@ def load_txt_documents(txt_dir=DATA_DIR / "txt"):
     return documents
 
 def load_all_documents():
+    """Load documents from every source type (web, pdf, txt) and combine them."""
     print("Loading documents from all sources...\n")
 
+    # gather documents from all three source types
     urls = load_urls()
     web_docs = load_web_documents(urls)
     pdf_docs = load_pdf_documents()
@@ -127,10 +134,11 @@ def fetch_clean_text(url):
     response = requests.get(url, headers={"User-Agent": "the-global-desk/1.0"}, timeout=30)
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # Strip boilerplate regions before extracting text.
+    # remove nav, header, footer, etc. so we only get the actual content
     for tag in soup.find_all(["nav", "header", "footer", "script", "style", "aside"]):
         tag.decompose()
 
+    # try Davidson's CMS wrapper first, then fall back to standard HTML tags
     content = soup.find("div", class_="wysiwyg")
 
     if not content or len(content.get_text(strip=True)) < 1000:
@@ -140,6 +148,7 @@ def fetch_clean_text(url):
             soup.find("body")
         )
 
+    # pull out clean text and remove empty lines
     text = content.get_text(separator="\n", strip=True) if content else ""
     lines = [line for line in text.splitlines() if line.strip()]
     return "\n".join(lines)
@@ -189,6 +198,7 @@ def vectorize_db(chunks, persist_directory=CHROMA_DIR):
     return vector_db
 
 def main():
+    # full pipeline: load everything -> chunk it -> embed and store in vector db
     documents = load_all_documents()
     chunks = split_documents(documents)
     db = vectorize_db(chunks)
