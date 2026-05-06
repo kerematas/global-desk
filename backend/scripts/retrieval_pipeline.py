@@ -2,7 +2,7 @@
 Interactive terminal chat against the ChromaDB knowledge base.
 
 This script is a standalone CLI tool — run it directly to ask questions and get
-RAG-grounded answers in the terminal. It is also used by the evaluation pipeline,
+RAG-grounded answers in the terminal. It is also used by the test/evaluation pipeline,
 which drives it via subprocess stdin.
 
 Note: the embeddings, db, and model are all initialised at module import time.

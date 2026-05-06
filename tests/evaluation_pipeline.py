@@ -12,9 +12,9 @@ import subprocess
 from pathlib import Path
 
 # ====== CONFIG ======
-QUESTIONS_FILE = "../../evaluation/100Questions.txt"
+QUESTIONS_FILE = "../../tests/100Questions.txt"
 TARGET_SCRIPT = "retrieval_pipeline.py"
-OUTPUT_FILE = "../../evaluation/answers.txt"
+OUTPUT_FILE = "../../tests/answers.txt"
 PYTHON_EXE = "python"
 # ====================
 
